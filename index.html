@@ -73,11 +73,11 @@
     </section>
 
     <section class="kpis container">
-      <div class="card"><div class="k">Market Cap</div><div class="v">$3.0T (live)</div></div>
-      <div class="card"><div class="k">P/E (TTM)</div><div class="v">~30.3</div></div>
-      <div class="card"><div class="k">EPS (TTM)</div><div class="v">6.59</div></div>
-      <div class="card"><div class="k">5Y CAGR (Revenue)</div><div class="v">~7–8%</div></div>
-    </section>
+  <div class="card"><div class="k">Market Cap</div><div class="v"><p id="marketcap">$3.0T (live)</p></div></div>
+  <div class="card"><div class="k">P/E (TTM)</div><div class="v"><p id="pe">~30.3</p></div></div>
+  <div class="card"><div class="k">EPS (TTM)</div><div class="v"><p id="eps">6.59</p></div></div>
+  <div class="card"><div class="k">5Y CAGR (Revenue)</div><div class="v">~7–8%</div></div>
+</section>
 
     <section id="live-chart" class="container section">
       <h2>Live Stock Chart</h2>
@@ -193,5 +193,21 @@
       }
     });
   </script>
+  <script>
+async function updateFinance() {
+  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLok0s6XHp7aD8EbF0Ftu3nyJuy3cxhJi7hhWbQfycz5ayJ5hLQ6Ut0TwQJcTYl3vVBWW9iFW7XXyJ/pub?gid=0&single=true&output=csvAICI_PUI_LINKUL_TAU_CSV";
+  const response = await fetch(url);
+  const text = await response.text();
+  const rows = text.split("\n");
+
+  // actualizează valorile din pagină (presupunem: rând 1 = MarketCap, rând 2 = P/E, rând 3 = EPS)
+  document.getElementById("marketcap").innerText = rows[0].trim();
+  document.getElementById("pe").innerText = rows[1].trim();
+  document.getElementById("eps").innerText = rows[2].trim();
+}
+
+updateFinance();
+setInterval(updateFinance, 3600000); // actualizează la fiecare oră
+</script>
 </body>
 </html>
