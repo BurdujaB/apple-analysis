@@ -195,7 +195,7 @@
   </script>
   <script>
 async function updateFinance() {
-  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLok0s6XHp7aD8EbF0Ftu3nyJuy3cxhJi7hhWbQfycz5ayJ5hLQ6Ut0TwQJcTYl3vVBWW9iFW7XXyJ/pub?gid=0&single=true&output=csvAICI_PUI_LINKUL_TAU_CSV";
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLok0s6XHp7aD8EbF0Ftu3nyJuy3cxhJi7hhWbQfycz5ayJ5hLQ6Ut0TwQJcTYl3vVBWW9iFW7XXyJ/pub?gid=0&single=true&output=csv";
   const response = await fetch(url);
   const text = await response.text();
   const rows = text.split("\n");
