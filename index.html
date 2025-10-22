@@ -209,10 +209,25 @@ async function updateFinance() {
     // DEBUG optional (deschide F12 -> Console să vezi ce vine)
     // console.log({ lines, colA });
 
-    // Presupunem: A1=MarketCap (ex. "3.86 T USD"), A2=PE, A3=EPS
-    if (document.getElementById("marketcap")) document.getElementById("marketcap").innerText = colA[0] || "—";
-    if (document.getElementById("pe"))        document.getElementById("pe").innerText        = colA[1] || "—";
-    if (document.getElementById("eps"))       document.getElementById("eps").innerText       = colA[2] || "—";
+    // Presupunem: A1=MarketCap (ex. "3.86 T USD"), A2=PE, A3=EPSfunction formatValue(value, type) {
+  const num = parseFloat(value.replace(",", "."));
+  if (isNaN(num)) return "-";
+
+  if (type === "marketcap") return `$${num.toFixed(2)} T`;
+  if (type === "pe") return num.toFixed(2);
+  if (type === "eps") return num.toFixed(2);
+  return num;
+}
+
+if (document.getElementById("marketcap"))
+  document.getElementById("marketcap").innerText = formatValue(colA[0], "marketcap");
+
+if (document.getElementById("pe"))
+  document.getElementById("pe").innerText = formatValue(colA[1], "pe");
+
+if (document.getElementById("eps"))
+  document.getElementById("eps").innerText = formatValue(colA[2], "eps");
+
   } catch (err) {
     console.error("Eroare updateFinance:", err);
   }
