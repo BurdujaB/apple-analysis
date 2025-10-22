@@ -193,21 +193,34 @@
       }
     });
   </script>
-  <script>
+ <script>
 async function updateFinance() {
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLok0s6XHp7aD8EbF0Ftu3nyJuy3cxhJi7hhWbQfycz5ayJ5hLQ6Ut0TwQJcTYl3vVBWW9iFW7XXyJ/pub?gid=0&single=true&output=csv";
-  const response = await fetch(url);
-  const text = await response.text();
-  const rows = text.split("\n");
+  try {
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLok0s6XHp7aD8EbF0Ftu3nyJuy3cxhJi7hhWbQfycz5ayJ5hLQ6Ut0TwQJcTYl3vVBWW9iFW7XXyJ/pub?gid=0&single=true&output=csv";
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
 
-  // actualizează valorile din pagină (presupunem: rând 1 = MarketCap, rând 2 = P/E, rând 3 = EPS)
-  document.getElementById("marketcap").innerText = rows[0].trim();
-  document.getElementById("pe").innerText = rows[1].trim();
-  document.getElementById("eps").innerText = rows[2].trim();
+    // 1) sparge pe linii, curăță golurile
+    const lines = text.trim().split(/\r?\n/).filter(Boolean);
+    // 2) ia numai prima coloană (A) din fiecare linie, fără ghilimele
+    const colA = lines.map(line => line.split(",")[0].replace(/^"|"$/g, "").trim());
+
+    // DEBUG optional (deschide F12 -> Console să vezi ce vine)
+    // console.log({ lines, colA });
+
+    // Presupunem: A1=MarketCap (ex. "3.86 T USD"), A2=PE, A3=EPS
+    if (document.getElementById("marketcap")) document.getElementById("marketcap").innerText = colA[0] || "—";
+    if (document.getElementById("pe"))        document.getElementById("pe").innerText        = colA[1] || "—";
+    if (document.getElementById("eps"))       document.getElementById("eps").innerText       = colA[2] || "—";
+  } catch (err) {
+    console.error("Eroare updateFinance:", err);
+  }
 }
 
+// Rulează imediat și apoi o dată pe oră
 updateFinance();
-setInterval(updateFinance, 3600000); // actualizează la fiecare oră
+setInterval(updateFinance, 3600000);
 </script>
 </body>
 </html>
