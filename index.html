@@ -175,15 +175,13 @@
         }
       }catch(e){ console.warn("Revenue load error", e); }
     }
-
-    async function init(){ await loadKPI(); await loadRevenue(); }
     init();
     // refreshează o dată pe oră (poți schimba sau elimina)
     setInterval(init, 3600000);
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-const KEY = "QA0MJREQQJZUL035";   // cheia ta Alpha Vantage
+const KEY = "XE5ORMNMWAJ8IMWG";   // cheia ta Alpha Vantage
 const CACHE_MIN = 30;              // cache local 30 min (evită limitele)
 const ids = { mc:"marketcap", pe:"pe", eps:"eps", cagr:"cagr", canvas:"appleRevenueChart" };
 
@@ -201,15 +199,6 @@ async function cachedFetch(key, url){
   const r = await fetch(url); const d = await r.json();
   localStorage.setItem(k, JSON.stringify({t: now, d}));
   return d;
-}
-
-// KPI live (MarketCap, P/E, EPS)
-async function loadKPI(){
-  const j = await cachedFetch("OVERVIEW",
-    `https://www.alphavantage.co/query?function=OVERVIEW&symbol=AAPL&apikey=${KEY}`);
-  document.getElementById(ids.mc).textContent  = fmt.trillions(+j.MarketCapitalization);
-  document.getElementById(ids.pe).textContent  = fmt.two(+j.PERatio);
-  document.getElementById(ids.eps).textContent = fmt.two(+j.EPS);
 }
 
 // Revenue + 5Y CAGR + grafic
@@ -251,6 +240,80 @@ async function loadRevenue(){
 async function init(){ await loadKPI(); await loadRevenue(); }
 init();
 setInterval(init, 60*60*1000); // refresh orar
+</script>
+<!-- Chart.js (o singură dată) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+const KEY = "QA0MJREQQJZUL035";   // Alpha Vantage key
+const CACHE_MIN = 30;              // cache local 30 min (evită limitele AV)
+const el = { mc:"marketcap", pe:"pe", eps:"eps", cagr:"cagr", canvas:"appleRevenueChart" };
+
+const fmt = {
+  trillions: n => "$" + (n/1e12).toFixed(2) + "T",
+  usd: n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n),
+  two: n => (+n).toFixed(2)
+};
+
+// cache simplu în localStorage
+async function cachedFetch(key, url){
+  const k = "av:"+key, now = Date.now();
+  const hit = JSON.parse(localStorage.getItem(k) || "null");
+  if(hit && (now - hit.t) < CACHE_MIN*60*1000) return hit.d;
+  const r = await fetch(url);
+  const d = await r.json();
+  localStorage.setItem(k, JSON.stringify({t: now, d}));
+  return d;
+}
+
+// KPI live
+async function loadKPI(){
+  const j = await cachedFetch("OVERVIEW",
+    `https://www.alphavantage.co/query?function=OVERVIEW&symbol=AAPL&apikey=${KEY}`);
+  document.getElementById(el.mc).textContent  = fmt.trillions(+j.MarketCapitalization);
+  document.getElementById(el.pe).textContent  = fmt.two(+j.PERatio);
+  document.getElementById(el.eps).textContent = fmt.two(+j.EPS);
+}
+
+// Revenue + 5Y CAGR + grafic
+let chart;
+async function loadRevenue(){
+  const j = await cachedFetch("INCOME",
+    `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=AAPL&apikey=${KEY}`);
+
+  const rows = (j.annualReports||[])
+    .map(r => ({ y: +r.fiscalDateEnding.slice(0,4), v: +r.totalRevenue }))
+    .filter(r => r.y && r.v)
+    .sort((a,b)=>a.y-b.y); // crescător
+
+  if(rows.length >= 6){
+    const last = rows[rows.length-1].v, prev5 = rows[rows.length-6].v;
+    const cagr = (Math.pow(last/prev5, 1/5)-1)*100;
+    document.getElementById(el.cagr).textContent = "~ " + fmt.two(cagr) + "%";
+  }
+
+  const labels = rows.map(r=>String(r.y));
+  const data   = rows.map(r=>r.v/1e9); // miliarde USD
+
+  const ctx = document.getElementById(el.canvas).getContext("2d");
+  if(chart) chart.destroy();
+  chart = new Chart(ctx,{
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Revenue (Billion USD)", data, borderWidth:1.5, borderRadius:6 }] },
+    options:{
+      maintainAspectRatio:false,
+      scales:{
+        x:{ ticks:{ color:"#bbb" }, grid:{ color:"#1f1f28" } },
+        y:{ beginAtZero:true, ticks:{ color:"#bbb", callback:v=>"$"+v.toFixed(0)+"B" }, grid:{ color:"#1f1f28" } }
+      },
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>"Revenue: "+fmt.usd(rows[c.dataIndex].v) } } }
+    }
+  });
+}
+
+async function init(){ await loadKPI(); await loadRevenue(); }
+init();
+setInterval(init, 60*60*1000); // reîmprospătare orară
 </script>
 
 </body>
