@@ -3,318 +3,190 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Apple Inc. (AAPL) — Live Analysis</title>
-  <meta name="description" content="TradingView live și grafic interactiv de revenue (Chart.js) cu date din Google Sheets." />
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <title>Apple Inc. (AAPL) — Live KPI & Revenue</title>
+  <meta name="description" content="Apple KPI live (Market Cap, P/E, EPS) + grafic de revenue, alimentat din Alpha Vantage." />
+  <link rel="icon" href="favicon.ico" />
+
   <style>
-    :root{ --bg:#0b0b0f; --panel:#14141b; --muted:#a1a1aa; --text:#fafafa; --border:#262633; --card:#0f0f15; --rev-h: clamp(300px,42vh,420px); }
+    :root{
+      --bg:#0b0b0f; --text:#fafafa; --muted:#a1a1aa;
+      --card:#12121a; --border:#252536; --panel:#14141b;
+      --green:#00ff84;
+      --rev-h: clamp(320px, 45vh, 460px);
+    }
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-    .container{max-width:1100px;margin:0 auto;padding:0 20px}
-    .row{display:flex;gap:12px}.row.between{justify-content:space-between}.row.center{align-items:center}
-    .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-    @media (max-width:800px){.grid-2{grid-template-columns:1fr}}
-    .nav{position:sticky;top:0;backdrop-filter:saturate(120%) blur(6px);background:#0b0b0fc0;border-bottom:1px solid var(--border);z-index:40}
-    .brand .logo{width:30px;height:30px;display:grid;place-items:center;background:#14141b;border-radius:10px}
-    .brand-text{margin-left:8px;font-weight:600;color:#e5e7eb}
-    .hero{padding:48px 0 18px}
-    h1{font-size:clamp(28px,4vw,46px);line-height:1.1;margin:0 0 8px}
-    h2{font-size:clamp(20px,3vw,28px);margin:0 0 8px}
+    html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
+    .container{max-width:1100px;margin:0 auto;padding:0 18px}
+    h1{font-size:clamp(26px,3.8vw,40px);line-height:1.1;margin:26px 0 6px}
+    h2{font-size:clamp(20px,3vw,28px);margin:16px 0 8px}
     .muted{color:var(--muted)} .small{font-size:13px}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;border:1px solid var(--border);color:var(--text);text-decoration:none;background:transparent}
-    .btn.primary{background:linear-gradient(90deg,#1e293b,#111827);border-color:#1f2937}
-    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:10px 20px 0}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0}
     @media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px}
-    .k{color:#cbd5e1;font-size:13px}
-    .v{font-weight:700;font-size:22px}
-    .section{padding:26px 0}
-    .embed{background:var(--panel);border:1px solid var(--border)}
-    .rounded{border-radius:18px;overflow:hidden}
-    .revenue-wrap{border-radius:18px;overflow:hidden;background:#14141b;border:1px solid #262633}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;min-height:92px}
+    .k{font-size:13px;color:#cbd5e1;margin-bottom:8px}
+    .v{font-size:28px;font-weight:700;min-height:32px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:18px}
+    .revenue{padding:14px}
     #appleRevenueChart{display:block;width:100%;height:var(--rev-h)}
-    .footer{border-top:1px solid var(--border);padding:18px 0;margin-top:26px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
+    @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+    .infoBox{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px}
+    .badge{display:inline-block;padding:2px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:12px}
+    .row{display:flex;align-items:center;gap:8px}
   </style>
 </head>
 <body>
-  <header class="nav">
-    <div class="container row between center">
-      <div class="brand row center">
-        <!-- Logo Apple (poți înlocui cu <img src="apple.png" alt="Apple" width="30" height="30" />) -->
-        <div class="logo" aria-hidden="true"></div>
-        <div class="brand-text">Company Analysis</div>
-      </div>
-      <nav class="row">
-        <a href="#live-chart" class="btn primary">Live Chart</a>
-        <a href="#financials" class="btn">Revenue</a>
-        <a href="#sources" class="btn">Sources</a>
-      </nav>
-    </div>
-  </header>
+  <main class="container">
+    <h1>Apple Inc. (AAPL) — Live KPI & Revenue</h1>
+    <p class="muted small">Date live din Alpha Vantage. Valorile sunt actualizate periodic; pot exista mici diferențe față de alte agregatoare.</p>
 
-  <main>
-    <section class="hero container">
-      <h1>Apple Inc. (AAPL) — Interactive Analysis</h1>
-      <p class="muted">TradingView live + grafic interactiv de revenue (Chart.js) alimentat din Google Sheets.</p>
-      <div class="row">
-        <a href="#live-chart" class="btn primary">Deschide graficul live</a>
-        <a href="#financials" class="btn">Revenue & KPI</a>
+    <!-- KPI -->
+    <section class="kpis">
+      <div class="card">
+        <div class="k">Market Cap</div>
+        <div class="v" id="marketcap">—</div>
+      </div>
+      <div class="card">
+        <div class="k">P/E (TTM)</div>
+        <div class="v" id="pe">—</div>
+      </div>
+      <div class="card">
+        <div class="k">EPS (TTM)</div>
+        <div class="v" id="eps">—</div>
+      </div>
+      <div class="card">
+        <div class="k">5Y CAGR (Revenue)</div>
+        <div class="v" id="cagr">—</div>
       </div>
     </section>
 
-    <!-- KPI live din Google Sheets (CSV public) -->
-    <section class="kpis container">
-      <div class="card"><div class="k">Market Cap</div><div class="v" id="marketcap">$3.00T</div></div>
-      <div class="card"><div class="k">P/E (TTM)</div><div class="v" id="pe">—</div></div>
-      <div class="card"><div class="k">EPS (TTM)</div><div class="v" id="eps">—</div></div>
-      <div class="card"><div class="k">5Y CAGR (Revenue)</div><div class="v" id="cagr">—</div></div>
-    </section>
-
-    <section id="live-chart" class="container section">
-      <h2>Live Stock Chart</h2>
-      <p class="muted">TradingView — schimbă intervale, adaugă indicatori, compară simboluri.</p>
-      <div class="embed rounded"><div id="tradingview_container" style="height:560px;"></div></div>
-      <script src="https://s3.tradingview.com/tv.js"></script>
-      <script>
-        new TradingView.widget({
-          width:"100%", height:560, symbol:"NASDAQ:AAPL", interval:"D",
-          timezone:"Etc/UTC", theme:"dark", style:"1", locale:"en",
-          withdateranges:true, allow_symbol_change:true, details:true,
-          container_id:"tradingview_container"
-        });
-      </script>
-    </section>
-
-    <section id="financials" class="container section">
-      <h2>Revenue & Financials</h2>
-      <p class="muted">Grafic anual al veniturilor Apple (miliarde USD). Click pe an pentru suma exactă.</p>
-
-      <div class="revenue-wrap">
-        <canvas id="appleRevenueChart"></canvas>
+    <!-- Revenue chart -->
+    <section>
+      <h2>Revenue &amp; Financials</h2>
+      <p class="muted small">Grafic anual al veniturilor Apple (miliarde USD). Click pe un an pentru suma exactă.</p>
+      <div class="panel revenue">
+        <canvas id="appleRevenueChart" aria-label="Apple Revenue"></canvas>
       </div>
 
-      <div class="grid-2" style="margin-top:16px">
-        <div class="card small">
+      <div class="grid-2">
+        <div class="infoBox">
           <div class="k">An selectat</div>
           <div class="v" id="revYear">—</div>
-          <div class="k" style="margin-top:8px">Revenue exact</div>
+          <div class="k" style="margin-top:10px">Revenue exact</div>
           <div class="v" id="revValue">—</div>
         </div>
-        <div class="card">
-          <div class="k small">Metodologie</div>
-          <p class="muted small">Annual revenue (FY), în miliarde USD. Sursa: foaie Google publicată (CSV) bazată pe date IR/SEC. Valorile pot avea rotunjiri minore.</p>
+        <div class="infoBox">
+          <div class="k">Metodologie</div>
+          <p class="muted small">Annual revenue (FY), în miliarde USD. Sursa: Alpha Vantage (funcția <code>INCOME_STATEMENT</code>), prelucrat client-side. Valorile pot avea rotunjiri minore.</p>
+          <div class="row"><span class="badge" id="lastUpdated">—</span><span class="muted small">ultima actualizare</span></div>
         </div>
       </div>
-    </section>
-
-    <section id="sources" class="container section">
-      <h2>Sources & Disclosures</h2>
-      <ul class="muted">
-        <li>TradingView — <a href="https://www.tradingview.com/symbols/NASDAQ-AAPL/" target="_blank" style="color:#38bdf8;text-decoration:none">Market prices</a></li>
-        <li>SEC EDGAR — <a href="https://www.sec.gov/edgar/browse/?CIK=0000320193" target="_blank" style="color:#38bdf8;text-decoration:none">Reports archive</a></li>
-      </ul>
-      <p class="small muted">Material educațional; nu reprezintă recomandare de investiții.</p>
     </section>
   </main>
 
-  <footer class="footer">
-    <div class="container row between center">
-      <span class="muted small">© <span id="year"></span> <a href="https://www.linkedin.com/in/bogdan-burduja-33b064317/" target="_blank" style="color:#38bdf8;text-decoration:none;font-weight:600">Bogdan Burduja</a> — Analysis Template</span>
-      <a href="#live-chart" class="btn">Back ↑</a>
-    </div>
-  </footer>
-
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
-
-  <!-- Chart.js (o singură versiune) -->
+  <!-- Chart.js (o singură dată) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+  <!-- Alpha Vantage – LIVE -->
   <script>
-    function usd(n){ return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n); }
-    function billions(n){ return "$" + (n/1e9).toFixed(2) + "B"; }
-        // (Opțional) dacă pui în KPI: B1 = venit inițial (acum 5y), B2 = venit final (curent) -> calculăm 5Y CAGR aici
-        // Exemplu: r4 = rev initial; r5 = rev final (USD)
-        const rev0 = Number(rows[3]?.[0]), revN = Number(rows[4]?.[0]);
-        if(!Number.isNaN(rev0) && !Number.isNaN(revN) && rev0>0){
-          const cagr = (Math.pow(revN/rev0, 1/5)-1)*100;
-          document.getElementById('cagr').textContent = cagr.toFixed(2) + "%";
-        }
-      }catch(e){ console.warn("KPI load error", e); }
-    }
-        const ctx = document.getElementById('appleRevenueChart').getContext('2d');
-        if(revChart) revChart.destroy();
-        revChart = new Chart(ctx,{
-          type:'bar',
-          data:{ labels, datasets:[{ label:'Revenue (USD, billions)', data: values.map(v=>v/1e9), borderWidth:1.5, borderRadius:6 }] },
-          options:{
-            maintainAspectRatio:false,
-            scales:{
-              x:{ ticks:{ color:'#bbb', maxRotation:0, autoSkip:true }, grid:{ color:'#1f1f28' } },
-              y:{ beginAtZero:true, ticks:{ color:'#bbb', callback:v=>"$"+Number(v).toFixed(2)+"B" }, grid:{ color:'#1f1f28' } }
-            },
-            plugins:{
-              legend:{ display:false },
-              tooltip:{ callbacks:{ label:(c)=>"Revenue: "+ billions(values[c.dataIndex]) } }
-            },
-            onClick:(e)=>{
-              const pts = revChart.getElementsAtEventForMode(e,'nearest',{intersect:true},true);
-              if(pts.length){
-                const i = pts[0].index;
-                document.getElementById('revYear').textContent  = labels[i];
-                document.getElementById('revValue').textContent = usd(values[i]) + " (" + billions(values[i]) + ")";
-              }
-            }
-          }
-        });
+  // ===== CONFIG =====
+  const KEY = "XE5ORMNMWAJ8IMWG";   // cheia ta Alpha Vantage
+  const CACHE_MIN = 30;              // cache local 30 min (evită limitele)
+  const el = { mc:"marketcap", pe:"pe", eps:"eps", cagr:"cagr", canvas:"appleRevenueChart", y:"revYear", v:"revValue", stamp:"lastUpdated" };
 
-        // selectează implicit ultimul an
-        if(labels.length){
-          const last = labels.length-1;
-          document.getElementById('revYear').textContent  = labels[last];
-          document.getElementById('revValue').textContent = usd(values[last]) + " (" + billions(values[last]) + ")";
-        }
-      }catch(e){ console.warn("Revenue load error", e); }
+  // formatare
+  const fmt = {
+    trillions: n => "$" + (n/1e12).toFixed(2) + "T",
+    usd: n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n),
+    two: n => (+n).toFixed(2)
+  };
+
+  // cache simplu în localStorage
+  async function cachedFetch(key, url){
+    const k = "av:"+key, now = Date.now();
+    const hit = JSON.parse(localStorage.getItem(k) || "null");
+    if (hit && (now - hit.t) < CACHE_MIN*60*1000) return hit.d;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d = await r.json();
+    localStorage.setItem(k, JSON.stringify({ t: now, d }));
+    return d;
+  }
+
+  // KPI (MarketCap, P/E, EPS)
+  async function loadKPI(){
+    const j = await cachedFetch("OVERVIEW",
+      `https://www.alphavantage.co/query?function=OVERVIEW&symbol=AAPL&apikey=${KEY}`);
+    document.getElementById(el.mc).textContent  = fmt.trillions(+j.MarketCapitalization);
+    document.getElementById(el.pe).textContent  = fmt.two(+j.PERatio);
+    document.getElementById(el.eps).textContent = fmt.two(+j.EPS);
+  }
+
+  // Revenue + 5Y CAGR + grafic + click pe bară
+  let chart;
+  async function loadRevenue(){
+    const j = await cachedFetch("INCOME",
+      `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=AAPL&apikey=${KEY}`);
+
+    const rows = (j.annualReports||[])
+      .map(r => ({ y:+r.fiscalDateEnding.slice(0,4), v:+r.totalRevenue }))
+      .filter(r => r.y && r.v)
+      .sort((a,b)=>a.y-b.y);               // ani crescător
+
+    // 5Y CAGR
+    if (rows.length >= 6){
+      const last = rows[rows.length-1].v, prev5 = rows[rows.length-6].v;
+      const cagr = (Math.pow(last/prev5, 1/5)-1)*100;
+      document.getElementById(el.cagr).textContent = "~ " + fmt.two(cagr) + "%";
     }
-    init();
-    // refreshează o dată pe oră (poți schimba sau elimina)
-    setInterval(init, 3600000);
+
+    // pregătim chart data (miliarde USD)
+    const labels = rows.map(r=>String(r.y));
+    const data   = rows.map(r=>r.v/1e9);
+
+    const ctx = document.getElementById(el.canvas).getContext("2d");
+    if (chart) chart.destroy();
+    chart = new Chart(ctx,{
+      type:"bar",
+      data:{ labels, datasets:[{ label:"Revenue (Billion USD)", data, borderWidth:1.5, borderRadius:6 }] },
+      options:{
+        maintainAspectRatio:false,
+        scales:{
+          x:{ ticks:{ color:"#bbb" }, grid:{ color:"#1f1f28" } },
+          y:{ beginAtZero:true, ticks:{ color:"#bbb", callback:v=>"$"+v.toFixed(0)+"B" }, grid:{ color:"#1f1f28" } }
+        },
+        plugins:{
+          legend:{ display:false },
+          tooltip:{ callbacks:{ label:c=>"Revenue: "+fmt.usd(rows[c.dataIndex].v) } }
+        }
+      }
+    });
+
+    // select implicit ultimul an + click pe bară pentru detaliu
+    const yEl = document.getElementById(el.y);
+    const vEl = document.getElementById(el.v);
+    const setRow = i=>{
+      if(!yEl || !vEl) return;
+      yEl.textContent = labels[i];
+      vEl.textContent = fmt.usd(rows[i].v) + " (" + data[i].toFixed(2) + "B)";
+    };
+    setRow(labels.length-1); // ultimul
+    ctx.canvas.onclick = evt=>{
+      const p = chart.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
+      if(p.length) setRow(p[0].index);
+    };
+  }
+
+  function stamp(){
+    const t = new Date().toLocaleString();
+    const s = document.getElementById(el.stamp);
+    if(s) s.textContent = t;
+  }
+
+  async function init(){ await loadKPI(); await loadRevenue(); stamp(); }
+  init();
+  // refresh orar (poți mări/micșora)
+  setInterval(init, 60*60*1000);
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-const KEY = "XE5ORMNMWAJ8IMWG";   // cheia ta Alpha Vantage
-const CACHE_MIN = 0;              // cache local 30 min (evită limitele)
-const ids = { mc:"marketcap", pe:"pe", eps:"eps", cagr:"cagr", canvas:"appleRevenueChart" };
-
-const fmt = {
-  trillions: n => "$" + (n/1e12).toFixed(2) + "T",
-  usd: n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n),
-  two: n => (+n).toFixed(2)
-};
-
-// cache simplu
-async function cachedFetch(key, url){
-  const k = "av:"+key, now = Date.now();
-  const hit = JSON.parse(localStorage.getItem(k) || "null");
-  if(hit && (now - hit.t) < CACHE_MIN*60*1000) return hit.d;
-  const r = await fetch(url); const d = await r.json();
-  localStorage.setItem(k, JSON.stringify({t: now, d}));
-  return d;
-}
-
-// Revenue + 5Y CAGR + grafic
-let chart;
-async function loadRevenue(){
-  const j = await cachedFetch("INCOME",
-    `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=AAPL&apikey=${KEY}`);
-
-  const rows = (j.annualReports||[])
-    .map(r => ({ y: +r.fiscalDateEnding.slice(0,4), v: +r.totalRevenue }))
-    .filter(r => r.y && r.v).sort((a,b)=>a.y-b.y);   // ani crescător
-
-  // 5Y CAGR
-  if(rows.length >= 6){
-    const last = rows[rows.length-1].v, prev5 = rows[rows.length-6].v;
-    const cagr = (Math.pow(last/prev5, 1/5)-1)*100;
-    document.getElementById(ids.cagr).textContent = "~ " + fmt.two(cagr) + "%";
-  }
-
-  // Chart în miliarde USD
-  const labels = rows.map(r=>String(r.y));
-  const data   = rows.map(r=>r.v/1e9);
-  const ctx = document.getElementById(ids.canvas).getContext("2d");
-  if(chart) chart.destroy();
-  chart = new Chart(ctx,{
-    type:"bar",
-    data:{ labels, datasets:[{ label:"Revenue (Billion USD)", data, borderWidth:1.5, borderRadius:6 }] },
-    options:{
-      maintainAspectRatio:false,
-      scales:{
-        x:{ ticks:{ color:"#bbb" }, grid:{ color:"#1f1f28" } },
-        y:{ beginAtZero:true, ticks:{ color:"#bbb", callback:v=>"$"+v.toFixed(0)+"B" }, grid:{ color:"#1f1f28" } }
-      },
-      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>"Revenue: "+fmt.usd(rows[c.dataIndex].v) } } }
-    }
-  });
-}
-
-async function init(){ await loadKPI(); await loadRevenue(); }
-init();
-setInterval(init, 60*60*1000); // refresh orar
-</script>
-<!-- Chart.js (o singură dată) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-<script>
-const KEY = "XE5ORMNMWAJ8IMWG";   // Alpha Vantage key
-const CACHE_MIN = 0;              // cache local 30 min (evită limitele AV)
-const el = { mc:"marketcap", pe:"pe", eps:"eps", cagr:"cagr", canvas:"appleRevenueChart" };
-
-const fmt = {
-  trillions: n => "$" + (n/1e12).toFixed(2) + "T",
-  usd: n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n),
-  two: n => (+n).toFixed(2)
-};
-
-// cache simplu în localStorage
-async function cachedFetch(key, url){
-  const k = "av:"+key, now = Date.now();
-  const hit = JSON.parse(localStorage.getItem(k) || "null");
-  if(hit && (now - hit.t) < CACHE_MIN*60*1000) return hit.d;
-  const r = await fetch(url);
-  const d = await r.json();
-  localStorage.setItem(k, JSON.stringify({t: now, d}));
-  return d;
-}
-
-// KPI live
-async function loadKPI(){
-  const j = await cachedFetch("OVERVIEW",
-    `https://www.alphavantage.co/query?function=OVERVIEW&symbol=AAPL&apikey=${KEY}`);
-  document.getElementById(el.mc).textContent  = fmt.trillions(+j.MarketCapitalization);
-  document.getElementById(el.pe).textContent  = fmt.two(+j.PERatio);
-  document.getElementById(el.eps).textContent = fmt.two(+j.EPS);
-}
-
-// Revenue + 5Y CAGR + grafic
-let chart;
-async function loadRevenue(){
-  const j = await cachedFetch("INCOME",
-    `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=AAPL&apikey=${KEY}`);
-
-  const rows = (j.annualReports||[])
-    .map(r => ({ y: +r.fiscalDateEnding.slice(0,4), v: +r.totalRevenue }))
-    .filter(r => r.y && r.v)
-    .sort((a,b)=>a.y-b.y); // crescător
-
-  if(rows.length >= 6){
-    const last = rows[rows.length-1].v, prev5 = rows[rows.length-6].v;
-    const cagr = (Math.pow(last/prev5, 1/5)-1)*100;
-    document.getElementById(el.cagr).textContent = "~ " + fmt.two(cagr) + "%";
-  }
-
-  const labels = rows.map(r=>String(r.y));
-  const data   = rows.map(r=>r.v/1e9); // miliarde USD
-
-  const ctx = document.getElementById(el.canvas).getContext("2d");
-  if(chart) chart.destroy();
-  chart = new Chart(ctx,{
-    type:"bar",
-    data:{ labels, datasets:[{ label:"Revenue (Billion USD)", data, borderWidth:1.5, borderRadius:6 }] },
-    options:{
-      maintainAspectRatio:false,
-      scales:{
-        x:{ ticks:{ color:"#bbb" }, grid:{ color:"#1f1f28" } },
-        y:{ beginAtZero:true, ticks:{ color:"#bbb", callback:v=>"$"+v.toFixed(0)+"B" }, grid:{ color:"#1f1f28" } }
-      },
-      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>"Revenue: "+fmt.usd(rows[c.dataIndex].v) } } }
-    }
-  });
-}
-
-async function init(){ await loadKPI(); await loadRevenue(); }
-init();
-setInterval(init, 60*60*1000); // reîmprospătare orară
-</script>
-
 </body>
 </html>
