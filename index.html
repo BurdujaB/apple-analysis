@@ -130,27 +130,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <script>
-    // === CONFIG: înlocuiește cu URL-urile CSV publicate din Google Sheets (File -> Publish to web -> CSV)
-    const REVENUE_CSV_URL = "https://docs.google.com/spreadsheets/d/1XaqLvK5Fz0yHi-j9YTd0bM_7j1FmH_8uMGYTCK6mV3U/export?format=csv&gid=0"; // foaia "Revenue": capete [Data,Revenue (USD)]
-    const KPI_CSV_URL     = "https://docs.google.com/spreadsheets/d/1XaqLvK5Fz0yHi-j9YTd0bM_7j1FmH_8uMGYTCK6mV3U/export?format=csv&gid=202464799";     // foaia "KPI": r1 MarketCap (formatat), r2 PE (număr), r3 EPS (număr)
-
     function usd(n){ return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n); }
     function billions(n){ return "$" + (n/1e9).toFixed(2) + "B"; }
-
-    async function fetchCSV(url){
-      const res = await fetch(url + (url.includes('output=csv')?'&':'?') + 'ts=' + Date.now()); // anti-cache
-      const text = await res.text();
-      return text.trim().split('\n').map(r => r.split(','));
-    }
-
-    async function loadKPI(){
-      try{
-        const rows = await fetchCSV(KPI_CSV_URL);
-        // Așteptat: r1: MarketCap (ex. $3.90T), r2: PE, r3: EPS, (opțional r4 și r5: venit inițial/final pt CAGR)
-        document.getElementById('marketcap').textContent = (rows[0]?.[0] || '—').trim();
-        const pe  = Number(rows[1]?.[0]); if(!Number.isNaN(pe))  document.getElementById('pe').textContent  = pe.toFixed(2);
-        const eps = Number(rows[2]?.[0]); if(!Number.isNaN(eps)) document.getElementById('eps').textContent = eps.toFixed(2);
-
         // (Opțional) dacă pui în KPI: B1 = venit inițial (acum 5y), B2 = venit final (curent) -> calculăm 5Y CAGR aici
         // Exemplu: r4 = rev initial; r5 = rev final (USD)
         const rev0 = Number(rows[3]?.[0]), revN = Number(rows[4]?.[0]);
@@ -160,19 +141,6 @@
         }
       }catch(e){ console.warn("KPI load error", e); }
     }
-
-    let revChart;
-    async function loadRevenue(){
-      try{
-        const rows = await fetchCSV(REVENUE_CSV_URL);
-        // rows: [ ['Data','Revenue (USD)'], ['2024-09-30','391035000000'], ... ]
-        const labels = [], values = [];
-        for(let i=1;i<rows.length;i++){
-          const y = (rows[i][0]||"").slice(0,4);
-          const v = Number(rows[i][1]||0);
-          if(y && !Number.isNaN(v)){ labels.push(y); values.push(v); }
-        }
-
         const ctx = document.getElementById('appleRevenueChart').getContext('2d');
         if(revChart) revChart.destroy();
         revChart = new Chart(ctx,{
@@ -213,5 +181,77 @@
     // refreshează o dată pe oră (poți schimba sau elimina)
     setInterval(init, 3600000);
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const KEY = "QA0MJREQQJZUL035";   // cheia ta Alpha Vantage
+const CACHE_MIN = 30;              // cache local 30 min (evită limitele)
+const ids = { mc:"marketcap", pe:"pe", eps:"eps", cagr:"cagr", canvas:"appleRevenueChart" };
+
+const fmt = {
+  trillions: n => "$" + (n/1e12).toFixed(2) + "T",
+  usd: n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n),
+  two: n => (+n).toFixed(2)
+};
+
+// cache simplu
+async function cachedFetch(key, url){
+  const k = "av:"+key, now = Date.now();
+  const hit = JSON.parse(localStorage.getItem(k) || "null");
+  if(hit && (now - hit.t) < CACHE_MIN*60*1000) return hit.d;
+  const r = await fetch(url); const d = await r.json();
+  localStorage.setItem(k, JSON.stringify({t: now, d}));
+  return d;
+}
+
+// KPI live (MarketCap, P/E, EPS)
+async function loadKPI(){
+  const j = await cachedFetch("OVERVIEW",
+    `https://www.alphavantage.co/query?function=OVERVIEW&symbol=AAPL&apikey=${KEY}`);
+  document.getElementById(ids.mc).textContent  = fmt.trillions(+j.MarketCapitalization);
+  document.getElementById(ids.pe).textContent  = fmt.two(+j.PERatio);
+  document.getElementById(ids.eps).textContent = fmt.two(+j.EPS);
+}
+
+// Revenue + 5Y CAGR + grafic
+let chart;
+async function loadRevenue(){
+  const j = await cachedFetch("INCOME",
+    `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=AAPL&apikey=${KEY}`);
+
+  const rows = (j.annualReports||[])
+    .map(r => ({ y: +r.fiscalDateEnding.slice(0,4), v: +r.totalRevenue }))
+    .filter(r => r.y && r.v).sort((a,b)=>a.y-b.y);   // ani crescător
+
+  // 5Y CAGR
+  if(rows.length >= 6){
+    const last = rows[rows.length-1].v, prev5 = rows[rows.length-6].v;
+    const cagr = (Math.pow(last/prev5, 1/5)-1)*100;
+    document.getElementById(ids.cagr).textContent = "~ " + fmt.two(cagr) + "%";
+  }
+
+  // Chart în miliarde USD
+  const labels = rows.map(r=>String(r.y));
+  const data   = rows.map(r=>r.v/1e9);
+  const ctx = document.getElementById(ids.canvas).getContext("2d");
+  if(chart) chart.destroy();
+  chart = new Chart(ctx,{
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Revenue (Billion USD)", data, borderWidth:1.5, borderRadius:6 }] },
+    options:{
+      maintainAspectRatio:false,
+      scales:{
+        x:{ ticks:{ color:"#bbb" }, grid:{ color:"#1f1f28" } },
+        y:{ beginAtZero:true, ticks:{ color:"#bbb", callback:v=>"$"+v.toFixed(0)+"B" }, grid:{ color:"#1f1f28" } }
+      },
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>"Revenue: "+fmt.usd(rows[c.dataIndex].v) } } }
+    }
+  });
+}
+
+async function init(){ await loadKPI(); await loadRevenue(); }
+init();
+setInterval(init, 60*60*1000); // refresh orar
+</script>
+
 </body>
 </html>
