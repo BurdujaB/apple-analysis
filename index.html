@@ -34,6 +34,24 @@
     .badge{display:inline-block;padding:2px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:12px}
     .row{display:flex;align-items:center;gap:8px}
   </style>
+  <style>
+section.container {
+  margin: 60px auto;
+  padding: 20px;
+  max-width: 1000px;
+}
+
+.muted {
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.embed {
+  background: #0e0e0e;
+  border-radius: 12px;
+  padding: 10px;
+}
+</style>
 </head>
 <body>
   <main class="container">
@@ -62,6 +80,16 @@
 
     <!-- Revenue chart -->
     <section>
+      <section class="container" id="live-chart">
+  <h2>Live Stock Chart</h2>
+  <p class="muted">Advanced TradingView — switch intervals, add indicators, compare symbols.</p>
+
+  <div id="tradingview_container"
+       class="tv-wrap"
+       style="height:560px;">
+  </div>
+</section>
+
       <h2>Revenue &amp; Financials</h2>
       <p class="muted small">Grafic anual al veniturilor Apple (miliarde USD). Click pe un an pentru suma exactă.</p>
       <div class="panel revenue">
@@ -188,5 +216,24 @@
   // refresh orar (poți mări/micșora)
   setInterval(init, 60*60*1000);
   </script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+  new TradingView.widget({
+    container_id: "tradingview_container",
+    symbol: "NASDAQ:AAPL",
+    interval: "D",
+    theme: "dark",
+    style: "1",              // candles
+    locale: "en",
+    width: "100%",
+    height: 560,            // să corespundă cu style/resp.
+    timezone: "Etc/UTC",
+    withdateranges: true,
+    allow_symbol_change: true,
+    details: true
+    // studies: ["MACD@tv-basicstudies","RSI@tv-basicstudies"], // opțional
+  });
+</script>
+
 </body>
 </html>
